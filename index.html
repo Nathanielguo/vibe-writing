@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Writing</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Noto+Serif+SC:wght@400;500&family=JetBrains+Mono:wght@400&display=swap');
+
+:root {
+  --bg: #F5F1EB;
+  --surface: #FDFAF6;
+  --surface2: #EDE9E2;
+  --border: #D4CEC4;
+  --border-light: #E8E3DB;
+  --text: #1C1A17;
+  --text-muted: #7A7066;
+  --text-hint: #B0A898;
+  --accent: #3D5A4A;
+  --accent-light: #E8F0EB;
+  --accent-ghost: rgba(61,90,74,0.08);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Lora','Noto Serif SC',Georgia,serif;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* Header */
+header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 24px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border-light);
+  flex-shrink:0;
+  user-select:none;
+}
+
+.logo {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:12px;
+  letter-spacing:0.13em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  font-family:'JetBrains Mono',monospace;
+}
+
+.logo-icon {
+  width:26px;height:26px;
+  background:var(--accent);
+  border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:13px;
+}
+
+.header-right{display:flex;align-items:center;gap:14px}
+
+.status-pill {
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;color:var(--text-hint);
+  font-family:'JetBrains Mono',monospace;
+  background:var(--surface2);
+  border:1px solid var(--border-light);
+  border-radius:20px;
+  padding:4px 10px;
+}
+
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text-hint);flex-shrink:0}
+.dot.ready{background:#5A9A6A}
+.dot.thinking{background:#E8A840;animation:pulse 0.9s ease-in-out infinite}
+.dot.error{background:#B05050}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+
+.autosave-note {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--text-hint);
+  letter-spacing:0.05em;
+}
+
+/* Layout */
+.workspace {
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 272px;
+  min-height:0;
+}
+
+/* Editor pane */
+.editor-pane {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.editor-meta {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:13px 36px 11px;
+  border-bottom:1px solid var(--border-light);
+  flex-shrink:0;
+  gap:12px;
+}
+
+.doc-title-input {
+  font-family:'Lora','Noto Serif SC',serif;
+  font-size:14px;font-weight:500;
+  color:var(--text);
+  background:transparent;border:none;outline:none;
+  flex:1;
+}
+
+.doc-title-input::placeholder{color:var(--text-hint)}
+
+.meta-stats {
+  display:flex;align-items:center;gap:10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--text-hint);
+  letter-spacing:0.04em;white-space:nowrap;flex-shrink:0;
+}
+
+.meta-stats span{color:var(--text-muted)}
+
+.editor-scroll {
+  flex:1;
+  overflow-y:auto;
+  padding:44px 60px 100px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+
+.editor-scroll::-webkit-scrollbar{width:3px}
+.editor-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+#editor {
+  max-width:620px;
+  margin:0 auto;
+  font-family:'Lora','Noto Serif SC',serif;
+  font-size:17px;
+  line-height:1.92;
+  color:var(--text);
+  outline:none;
+  min-height:360px;
+  white-space:pre-wrap;
+  word-wrap:break-word;
+  caret-color:var(--accent);
+}
+
+#editor:empty::before {
+  content:attr(data-placeholder);
+  color:var(--text-hint);
+  pointer-events:none;
+  font-style:italic;
+}
+
+/* Ghost completion */
+#ghost-span {
+  color:var(--text-hint);
+  font-style:italic;
+  pointer-events:none;
+  border-bottom:1px dashed var(--text-hint);
+  opacity:0.85;
+}
+
+/* Tab hint bar — fixed to bottom of editor area */
+#tab-bar {
+  position:fixed;
+  bottom:52px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(28,26,23,0.88);
+  backdrop-filter:blur(4px);
+  color:#F5F1EB;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  padding:6px 14px;
+  border-radius:6px;
+  display:none;
+  align-items:center;
+  gap:10px;
+  white-space:nowrap;
+  z-index:50;
+  pointer-events:none;
+}
+
+#tab-bar kbd {
+  background:rgba(255,255,255,0.18);
+  padding:2px 6px;border-radius:3px;font-size:10px;
+}
+
+#tab-bar.show{display:flex}
+
+/* Sidebar */
+.sidebar {
+  background:var(--surface);
+  border-left:1px solid var(--border-light);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.sidebar-scroll{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sidebar-scroll::-webkit-scrollbar{width:3px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.sb-section {
+  padding:15px 16px 13px;
+  border-bottom:1px solid var(--border-light);
+}
+
+.sb-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9.5px;letter-spacing:0.13em;
+  text-transform:uppercase;color:var(--text-hint);
+  margin-bottom:10px;
+}
+
+/* Form elements */
+.row{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.row:last-child{margin-bottom:0}
+
+.row label{
+  font-size:11.5px;color:var(--text-muted);
+  min-width:52px;flex-shrink:0;
+}
+
+input[type=password], input[type=text], select, textarea {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:5px 7px;
+  color:var(--text);
+  outline:none;
+  width:100%;
+  transition:border-color 0.15s;
+}
+
+input[type=password]:focus,
+input[type=text]:focus,
+select:focus,
+textarea:focus {border-color:var(--accent)}
+
+input[type=range]{
+  flex:1;accent-color:var(--accent);
+  height:3px;cursor:pointer;
+}
+
+.val-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--text-hint);
+  min-width:30px;text-align:right;flex-shrink:0;
+}
+
+.btn-primary {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:4px;
+  padding:5px 10px;cursor:pointer;
+  white-space:nowrap;flex-shrink:0;
+  transition:opacity 0.15s;
+}
+
+.btn-primary:hover{opacity:0.82}
+
+textarea.sys-prompt{
+  resize:vertical;min-height:60px;
+  font-family:'Lora',serif;font-size:12px;line-height:1.6;
+}
+
+/* Action buttons */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+
+.act-btn {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:0.03em;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:7px 5px;
+  color:var(--text-muted);
+  cursor:pointer;
+  text-align:center;
+  line-height:1.4;
+  transition:all 0.14s;
+}
+
+.act-btn:hover{
+  background:var(--accent-light);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+
+.act-btn.full{grid-column:span 2}
+.act-btn:disabled{opacity:0.4;cursor:default}
+
+/* Preview box */
+#preview-box {
+  flex:1;overflow-y:auto;
+  font-family:'Lora','Noto Serif SC',serif;
+  font-size:12.5px;line-height:1.75;
+  color:var(--text-muted);
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:9px 10px;
+  min-height:80px;max-height:180px;
+  white-space:pre-wrap;word-break:break-all;
+  scrollbar-width:thin;
+}
+
+.preview-actions{display:flex;gap:5px;margin-top:7px}
+
+.btn-outline {
+  flex:1;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:transparent;
+  border:1px solid var(--border);border-radius:4px;
+  padding:6px 5px;color:var(--text-muted);
+  cursor:pointer;text-align:center;
+  transition:all 0.14s;
+}
+
+.btn-outline:hover{
+  background:var(--surface2);color:var(--text);
+  border-color:var(--text-muted);
+}
+
+/* Footer */
+footer {
+  background:var(--surface);
+  border-top:1px solid var(--border-light);
+  padding:9px 24px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+
+.foot-btn {
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:transparent;
+  border:1px solid var(--border);border-radius:4px;
+  padding:5px 11px;color:var(--text-muted);
+  cursor:pointer;
+  transition:all 0.13s;
+  display:flex;align-items:center;gap:4px;
+}
+
+.foot-btn:hover{background:var(--surface2);color:var(--text)}
+.foot-btn.danger:hover{background:#FEF0F0;color:#8B3A3A;border-color:#E0BCBC}
+
+.foot-sep{width:1px;height:16px;background:var(--border);flex-shrink:0}
+.foot-spacer{flex:1}
+.foot-hint{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--text-hint);letter-spacing:0.03em;
+}
+
+/* Toast */
+.toast {
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(12px);
+  background:var(--text);color:var(--bg);
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:7px 16px;border-radius:5px;
+  opacity:0;transition:all 0.22s;
+  pointer-events:none;z-index:200;
+}
+
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Undo/redo toggle */
+.undo-group{display:flex;gap:4px}
+.undo-btn{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:transparent;border:1px solid var(--border);border-radius:4px;
+  padding:5px 8px;color:var(--text-muted);cursor:pointer;
+  transition:all 0.13s;
+}
+.undo-btn:hover{background:var(--surface2);color:var(--text)}
+.undo-btn:disabled{opacity:0.35;cursor:default}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">✦</div>
+    Vibe Writing
+  </div>
+  <div class="header-right">
+    <span class="autosave-note" id="autosave-note">草稿已保存</span>
+    <div class="status-pill">
+      <div class="dot" id="s-dot"></div>
+      <span id="s-text">未配置</span>
+    </div>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- Editor -->
+  <div class="editor-pane">
+    <div class="editor-meta">
+      <input class="doc-title-input" id="doc-title" placeholder="文档标题（可选）" maxlength="80">
+      <div class="meta-stats">
+        <span id="wc-chars">0</span> 字
+        &nbsp;·&nbsp;
+        <span id="wc-paras">0</span> 段
+        &nbsp;·&nbsp;
+        <span id="wc-lines">0</span> 行
+      </div>
+    </div>
+    <div class="editor-scroll">
+      <div id="editor" contenteditable="true" spellcheck="false"
+        data-placeholder="开始书写……停笔 1–3 秒后，AI 将根据上下文给出补全建议，按 Tab 接受，按 Esc 忽略。"></div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-scroll">
+
+      <!-- API 配置 -->
+      <div class="sb-section">
+        <div class="sb-label">API 配置</div>
+        <div class="row">
+          <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" style="flex:1">
+          <button class="btn-primary" onclick="saveKey()">保存</button>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <label>模型</label>
+          <select id="model-select" style="flex:1">
+            <option value="deepseek-chat">deepseek-chat (V3)</option>
+            <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 补全设置 -->
+      <div class="sb-section">
+        <div class="sb-label">自动补全</div>
+        <div class="row">
+          <label>触发延迟</label>
+          <input type="range" min="1" max="5" step="0.5" value="1.5" id="delay-sl"
+            oninput="triggerDelay=parseFloat(this.value)*1000;document.getElementById('delay-vl').textContent=this.value+'s'">
+          <span class="val-label" id="delay-vl">1.5s</span>
+        </div>
+        <div class="row">
+          <label>补全字数</label>
+          <input type="range" min="10" max="100" step="5" value="40" id="len-sl"
+            oninput="completionMaxChars=parseInt(this.value);document.getElementById('len-vl').textContent=this.value+'字'">
+          <span class="val-label" id="len-vl">40字</span>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <label style="font-size:11px;color:var(--text-hint);min-width:auto">
+            💡 补全字数控制提示词中的期望长度，实际以模型输出为准。
+          </label>
+        </div>
+      </div>
+
+      <!-- 写作风格 -->
+      <div class="sb-section">
+        <div class="sb-label">写作风格提示</div>
+        <textarea class="sys-prompt" id="sys-prompt" rows="3"
+          placeholder="例：请以简洁克制的中文续写，风格偏学术……（留空则使用默认提示词）"></textarea>
+      </div>
+
+      <!-- 快捷生成 -->
+      <div class="sb-section">
+        <div class="sb-label">快捷操作</div>
+        <div class="action-grid">
+          <button class="act-btn" onclick="runAction('续写下一段，保持原有风格，100字以内')">↓ 续写段落</button>
+          <button class="act-btn" onclick="runAction('用一段话总结以上内容的核心观点，150字以内')">∑ 生成摘要</button>
+          <button class="act-btn" onclick="runAction('将以上内容改写得更加正式严谨，保持核心意思不变')">▲ 正式化</button>
+          <button class="act-btn" onclick="runAction('将以上内容改写得更加自然口语，去除书面腔调')">▽ 口语化</button>
+          <button class="act-btn" onclick="runAction('精简以上内容，删除冗余表述，保留核心信息')">✂ 精简</button>
+          <button class="act-btn" onclick="runAction('扩充以上内容，增加具体细节和例证，使论述更充分')">＋ 扩充</button>
+          <button class="act-btn" onclick="runAction('优化以下内容的逻辑结构和语句严谨性，使表达更清晰准确，不改变核心意思')">⟳ 优化逻辑</button>
+          <button class="act-btn" onclick="runAction('重新排版以上全文，使段落结构更清晰，段落间逻辑过渡更自然，不改变核心内容')">⊞ 重排版</button>
+        </div>
+      </div>
+
+      <!-- 预览 -->
+      <div class="sb-section" style="display:flex;flex-direction:column;gap:0">
+        <div class="sb-label">AI 输出预览</div>
+        <div id="preview-box">快捷操作结果将显示在这里。</div>
+        <div class="preview-actions">
+          <button class="btn-outline" onclick="appendPreview()">↙ 追加至末尾</button>
+          <button class="btn-outline" onclick="replaceWithPreview()">⇄ 替换全文</button>
+        </div>
+      </div>
+
+    </div><!-- sidebar-scroll -->
+  </div><!-- sidebar -->
+</div><!-- workspace -->
+
+<footer>
+  <div class="undo-group">
+    <button class="undo-btn" id="undo-btn" onclick="doUndo()" disabled title="撤销 Ctrl+Z">↩ 撤销</button>
+    <button class="undo-btn" id="redo-btn" onclick="doRedo()" disabled title="重做 Ctrl+Y">↪ 重做</button>
+  </div>
+  <div class="foot-sep"></div>
+  <button class="foot-btn" onclick="copyAll()">⎘ 复制全文</button>
+  <button class="foot-btn" onclick="exportTxt()">↓ .txt</button>
+  <button class="foot-btn" onclick="exportMd()">↓ .md</button>
+  <button class="foot-btn" onclick="exportHtml()">↓ .html</button>
+  <div class="foot-sep"></div>
+  <button class="foot-btn danger" onclick="clearEditor()">✕ 清空</button>
+  <div class="foot-spacer"></div>
+  <span class="foot-hint">Tab 接受补全 · Esc 取消 · Ctrl+Z 撤销</span>
+</footer>
+
+<div id="tab-bar">
+  <kbd>Tab</kbd> 接受补全
+  <span style="opacity:0.5">·</span>
+  <kbd>Esc</kbd> 忽略
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──
+let apiKey = localStorage.getItem('vibe_api_key') || '';
+let triggerDelay = 1500;
+let completionMaxChars = 40;  // target char count passed to prompt
+let completionTimer = null;
+let ghostSpan = null;
+let ghostContent = '';
+let isThinking = false;
+let abortCtrl = null;
+
+// Undo/Redo stack (stores plain text snapshots)
+const undoStack = [];
+const redoStack = [];
+let lastSnapshot = '';
+let snapshotTimer = null;
+
+const editor   = document.getElementById('editor');
+const tabBar   = document.getElementById('tab-bar');
+const sDot     = document.getElementById('s-dot');
+const sText    = document.getElementById('s-text');
+const previewBox = document.getElementById('preview-box');
+
+// ── Init ──
+(function init() {
+  if (apiKey) {
+    document.getElementById('api-key').value = apiKey;
+    setStatus('ready');
+  }
+  // Restore draft
+  const draft = localStorage.getItem('vibe_draft');
+  const draftTitle = localStorage.getItem('vibe_draft_title');
+  if (draft) { editor.innerText = draft; lastSnapshot = draft; }
+  if (draftTitle) document.getElementById('doc-title').value = draftTitle;
+  updateStats();
+  updateUndoBtns();
+  editor.focus();
+  setCursorEnd();
+})();
+
+// ── Status helper ──
+function setStatus(state, label) {
+  sDot.className = 'dot';
+  if (state === 'ready')    { sDot.classList.add('ready');    sText.textContent = label || '就绪'; }
+  else if (state === 'thinking') { sDot.classList.add('thinking'); sText.textContent = label || 'AI 思考中'; }
+  else if (state === 'error')   { sDot.classList.add('error');    sText.textContent = label || '出错'; }
+  else                          { sText.textContent = label || '未配置'; }
+}
+
+// ── API Key ──
+function saveKey() {
+  apiKey = document.getElementById('api-key').value.trim();
+  localStorage.setItem('vibe_api_key', apiKey);
+  setStatus(apiKey ? 'ready' : '', apiKey ? '就绪' : '未配置');
+  showToast(apiKey ? 'API Key 已保存' : 'Key 已清空');
+}
+
+// ── Stats ──
+function updateStats() {
+  const text = getEditorText();
+  const chars = text.replace(/\s/g, '').length;
+  const paras = text.split(/\n+/).filter(s => s.trim()).length;
+  const lines = text.split('\n').length;
+  document.getElementById('wc-chars').textContent = chars;
+  document.getElementById('wc-paras').textContent = paras;
+  document.getElementById('wc-lines').textContent = lines;
+}
+
+// ── Autosave ──
+let autosaveTimer = null;
+function triggerAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    localStorage.setItem('vibe_draft', getEditorText());
+    localStorage.setItem('vibe_draft_title', document.getElementById('doc-title').value);
+    const note = document.getElementById('autosave-note');
+    note.textContent = '草稿已自动保存 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+  }, 1200);
+}
+
+// ── Undo / Redo ──
+function takeSnapshot() {
+  const current = getEditorText();
+  if (current === lastSnapshot) return;
+  undoStack.push(lastSnapshot);
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack.length = 0;
+  lastSnapshot = current;
+  updateUndoBtns();
+}
+
+function scheduleSnapshot() {
+  clearTimeout(snapshotTimer);
+  snapshotTimer = setTimeout(takeSnapshot, 600);
+}
+
+function updateUndoBtns() {
+  document.getElementById('undo-btn').disabled = undoStack.length === 0;
+  document.getElementById('redo-btn').disabled = redoStack.length === 0;
+}
+
+function restoreText(text) {
+  clearGhost();
+  editor.innerText = text;
+  updateStats();
+  setCursorEnd();
+  updateUndoBtns();
+}
+
+function doUndo() {
+  if (!undoStack.length) return;
+  redoStack.push(lastSnapshot);
+  lastSnapshot = undoStack.pop();
+  restoreText(lastSnapshot);
+}
+
+function doRedo() {
+  if (!redoStack.length) return;
+  undoStack.push(lastSnapshot);
+  lastSnapshot = redoStack.pop();
+  restoreText(lastSnapshot);
+}
+
+// ── Ghost text ──
+function clearGhost() {
+  if (ghostSpan && document.contains(ghostSpan)) ghostSpan.remove();
+  ghostSpan = null;
+  ghostContent = '';
+  tabBar.classList.remove('show');
+}
+
+function insertGhost(text) {
+  clearGhost();
+  if (!text) return;
+  ghostContent = text;
+  ghostSpan = document.createElement('span');
+  ghostSpan.id = 'ghost-span';
+  ghostSpan.contentEditable = 'false';
+  ghostSpan.setAttribute('aria-hidden', 'true');
+  ghostSpan.textContent = text;
+
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) { editor.appendChild(ghostSpan); }
+  else {
+    const r = sel.getRangeAt(0);
+    r.collapse(true);
+    r.insertNode(ghostSpan);
+    // Move caret before ghost so typing cancels it naturally
+    r.setStartBefore(ghostSpan);
+    r.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+  tabBar.classList.add('show');
+}
+
+function acceptGhost() {
+  if (!ghostContent || !ghostSpan || !document.contains(ghostSpan)) return;
+  const text = ghostContent;
+  const tn = document.createTextNode(text);
+  ghostSpan.replaceWith(tn);
+  ghostSpan = null; ghostContent = '';
+  tabBar.classList.remove('show');
+  // Place cursor after accepted text
+  const r = document.createRange();
+  r.setStartAfter(tn); r.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(r);
+  // Record as snapshot so undo works
+  takeSnapshot();
+  updateStats();
+  triggerAutosave();
+}
+
+// ── Context extraction ──
+// Returns text before the cursor, excluding any ghost span
+function getTextBeforeCursor() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return getEditorText();
+
+  function collectText(node, stopNode, stopOffset, found) {
+    if (found.done) return '';
+    if (node === stopNode && node.nodeType === 3) {
+      found.done = true;
+      return node.textContent.slice(0, stopOffset);
+    }
+    if (node === ghostSpan) return '';  // skip ghost
+    if (node.nodeType === 3) {
+      if (node === stopNode) { found.done = true; return node.textContent.slice(0, stopOffset); }
+      return node.textContent;
+    }
+    let t = '';
+    for (const child of node.childNodes) {
+      t += collectText(child, stopNode, stopOffset, found);
+      if (found.done) break;
+    }
+    return t;
+  }
+
+  const r = sel.getRangeAt(0);
+  const found = { done: false };
+  return collectText(editor, r.startContainer, r.startOffset, found);
+}
+
+function getEditorText() {
+  const clone = editor.cloneNode(true);
+  clone.querySelectorAll('#ghost-span').forEach(n => n.remove());
+  return clone.innerText || '';
+}
+
+// ── DeepSeek API — inline completion ──
+async function fetchCompletion(context) {
+  if (!apiKey) { showToast('请先填写 DeepSeek API Key'); return null; }
+
+  const styleTip = document.getElementById('sys-prompt').value.trim();
+  // Strict prompt: explicitly state target char count, forbid repeating existing text
+  const sysMsg = [
+    '你是一个中文智能写作补全助手。',
+    '任务：根据用户已写的内容，续写紧接其后的文字。',
+    '要求：',
+    `1. 只输出补全内容本身，不得重复、引用或总结已有文字，不加任何解释或前缀。`,
+    `2. 补全长度控制在 ${completionMaxChars} 字左右（±10字），不得超过 ${completionMaxChars + 15} 字。`,
+    '3. 补全内容需与已有文字在语义、风格、句法上自然衔接，不能自成一段独立内容。',
+    '4. 若已有内容以句子中间结束，则补全该句的剩余部分；若以句末结束，则补全下一句或下一段的开头。',
+    styleTip ? ('5. 风格要求：' + styleTip) : '5. 风格保持与原文一致。'
+  ].join('\n');
+
+  abortCtrl = new AbortController();
+  // max_tokens: Chinese chars ≈ 1.5 tokens each; add buffer
+  const maxTok = Math.ceil(completionMaxChars * 1.8) + 20;
+  try {
+    const resp = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      signal: abortCtrl.signal,
+      body: JSON.stringify({
+        model: document.getElementById('model-select').value,
+        max_tokens: maxTok,
+        temperature: 0.72,
+        messages: [
+          { role: 'system', content: sysMsg },
+          { role: 'user', content: context }
+        ]
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast('API 错误：' + (err.error?.message || resp.status));
+      setStatus('error');
+      return null;
+    }
+    const data = await resp.json();
+    let result = (data.choices?.[0]?.message?.content || '').trim();
+    // Safety: strip if model accidentally repeated context end
+    if (result.length > 0 && context.length > 10) {
+      const ctxEnd = context.slice(-20).trim();
+      if (result.startsWith(ctxEnd)) result = result.slice(ctxEnd.length).trimStart();
+    }
+    return result || null;
+  } catch(e) {
+    if (e.name === 'AbortError') return null;
+    showToast('请求失败：' + e.message);
+    setStatus('error');
+    return null;
+  }
+}
+
+// ── Trigger completion ──
+async function triggerCompletion() {
+  const context = getTextBeforeCursor().trim();
+  if (!context || context.length < 8) return;
+  clearGhost();
+  isThinking = true;
+  setStatus('thinking');
+
+  const result = await fetchCompletion(context);
+  isThinking = false;
+
+  if (result) {
+    setStatus('ready', '补全就绪');
+    insertGhost(result);
+  } else {
+    setStatus(apiKey ? 'ready' : '', apiKey ? '就绪' : '未配置');
+  }
+}
+
+// ── Editor events ──
+editor.addEventListener('input', () => {
+  clearGhost();
+  updateStats();
+  scheduleSnapshot();
+  triggerAutosave();
+  clearTimeout(completionTimer);
+  if (!apiKey) return;
+  completionTimer = setTimeout(triggerCompletion, triggerDelay);
+});
+
+editor.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (ghostContent) { acceptGhost(); clearTimeout(completionTimer); setStatus('ready','就绪'); }
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    clearGhost();
+    clearTimeout(completionTimer);
+    if (abortCtrl) abortCtrl.abort();
+    isThinking = false;
+    setStatus(apiKey ? 'ready' : '');
+    return;
+  }
+  // Ctrl+Z / Ctrl+Y — use custom stack (browser's execCommand undo clashes with contenteditable)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault(); doUndo(); return;
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault(); doRedo(); return;
+  }
+  // Any printable key while ghost is shown → cancel ghost
+  if (ghostContent && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    clearGhost();
+  }
+});
+
+// ── Quick actions (sidebar) ──
+async function runAction(instruction) {
+  const text = getEditorText().trim();
+  if (!text) { showToast('编辑区无内容'); return; }
+  if (!apiKey) { showToast('请先填写 DeepSeek API Key'); return; }
+
+  previewBox.textContent = '生成中…';
+  setStatus('thinking', 'AI 处理中');
+
+  const sysMsg = '你是专业的中文写作助手。只输出结果本身，不加任何解释、标注或前缀。保持输出语言为中文。';
+  abortCtrl = new AbortController();
+  try {
+    const resp = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      signal: abortCtrl.signal,
+      body: JSON.stringify({
+        model: document.getElementById('model-select').value,
+        max_tokens: 1200,
+        temperature: 0.65,
+        messages: [
+          { role: 'system', content: sysMsg },
+          { role: 'user', content: instruction + '：\n\n' + text }
+        ]
+      })
+    });
+    const data = await resp.json();
+    previewBox.textContent = data.choices?.[0]?.message?.content?.trim() || '（无结果）';
+  } catch(e) {
+    if (e.name !== 'AbortError') previewBox.textContent = '请求失败：' + e.message;
+  }
+  setStatus(apiKey ? 'ready' : '');
+}
+
+// ── Preview apply ──
+function appendPreview() {
+  const t = previewBox.textContent;
+  if (!t || t.startsWith('快捷操作') || t.startsWith('生成中')) return;
+  takeSnapshot();
+  editor.focus();
+  setCursorEnd();
+  document.execCommand('insertText', false, '\n\n' + t);
+  updateStats(); triggerAutosave();
+  showToast('已追加至末尾');
+}
+
+function replaceWithPreview() {
+  const t = previewBox.textContent;
+  if (!t || t.startsWith('快捷操作') || t.startsWith('生成中')) return;
+  takeSnapshot();
+  editor.innerText = t;
+  updateStats(); triggerAutosave();
+  showToast('已替换全文');
+}
+
+// ── Export ──
+function copyAll() {
+  navigator.clipboard.writeText(getEditorText()).then(() => showToast('已复制到剪贴板'));
+}
+
+function getTitle() { return document.getElementById('doc-title').value.trim() || '文章'; }
+
+function exportTxt() {
+  download(getTitle() + '.txt', getEditorText(), 'text/plain;charset=utf-8');
+}
+
+function exportMd() {
+  const title = getTitle();
+  const content = '# ' + title + '\n\n' + getEditorText();
+  download(title + '.md', content, 'text/markdown;charset=utf-8');
+}
+
+function exportHtml() {
+  const title = getTitle();
+  const body = getEditorText()
+    .split('\n')
+    .map(l => l.trim() ? '<p>' + escHtml(l) + '</p>' : '')
+    .join('\n');
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>${escHtml(title)}</title>
+<style>body{max-width:680px;margin:60px auto;font-family:'Noto Serif SC',Georgia,serif;font-size:18px;line-height:1.9;color:#1C1A17;padding:0 24px}h1{font-size:24px;margin-bottom:2em;font-weight:500}p{margin:0 0 1em}</style>
+</head><body>
+${title ? '<h1>' + escHtml(title) + '</h1>' : ''}
+${body}
+</body></html>`;
+  download(title + '.html', html, 'text/html;charset=utf-8');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function download(filename, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename; a.click();
+}
+
+function clearEditor() {
+  if (!confirm('确认清空全部内容？此操作不可通过"撤销"恢复。')) return;
+  takeSnapshot();
+  editor.innerHTML = '';
+  clearGhost(); updateStats(); triggerAutosave();
+  showToast('已清空');
+}
+
+// ── Utilities ──
+function setCursorEnd() {
+  const r = document.createRange();
+  r.selectNodeContents(editor); r.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(r);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Title change → autosave
+document.getElementById('doc-title').addEventListener('input', triggerAutosave);
+</script>
+</body>
+</html>
